@@ -1,0 +1,22 @@
+---
+title: "mi-data-centers"
+output: html_notebook
+---
+
+```{r}
+#load libraries
+
+library(readxl)
+```
+
+```{r}
+
+# read in data center points
+
+# read in water use by county
+water_use_county <- read_excel("./data/2023_water_use_country.xlsx")
+
+
+```
+ 
+ 
