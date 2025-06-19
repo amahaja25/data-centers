@@ -1,6 +1,10 @@
 import csv
+from geopy.geocoders import Nominatim
 import nest_asyncio; nest_asyncio.apply()
 from playwright.sync_api import sync_playwright
+from geopy.exc import GeocoderTimedOut
+import time
+
 
 
 url = "https://www.datacentermap.com/usa/michigan/"
@@ -38,14 +42,23 @@ with sync_playwright() as pw:
 
                 if name_elem and desc_elem and href:
                         name = name_elem.inner_text().strip()
-                        description = desc_elem.inner_text().strip().replace("\n", ", ")
                         dc_url = f"https://www.datacentermap.com{href}"
+
+                        full_desc = desc_elem.inner_text().strip().replace("\n", ", ")
+                        # split into name and address
+                        if "," in full_desc:
+                            name_part, address_part = full_desc.split(",", 1)  # split on first comma only
+                            name_part = name_part.strip()
+                            address_part = address_part.strip()
+                            address_with_state = f"{address_part}, MI, USA"
+
 
                         results.append([
                             city,
                             full_url,
                             name,
-                            description,
+                            name_part, 
+                            address_with_state,    
                             dc_url
                         ])
 
@@ -54,16 +67,36 @@ with sync_playwright() as pw:
     unique_results = []
     seen_urls = set()
     for row in results:
-        data_center_url = row[4]
+        data_center_url = row[5]
         if data_center_url not in seen_urls:
             unique_results.append(row)
             seen_urls.add(data_center_url)
+
+    geolocator = Nominatim(user_agent="data_center")
+
+    def geocoded_address(address):
+        try:
+            location = geolocator.geocode(address)
+            if location:
+                return location.latitude, location.longitude
+            else:
+                return None, None
+        except GeocoderTimedOut:
+            time.sleep(1)
+            return geocoded_address(address)
+        
+    geocode_results = []
+    for row in unique_results:
+        address = row[3]  # address_part is at index 3
+        lat, lon = geocoded_address(address)
+        geocode_results.append(row + [lat, lon])
+        time.sleep(1)
             
     with open("michigan_data_centers.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["City", "City URL", "Data Center Name", "Description", "Data Center URL"])
-        writer.writerows(unique_results)
+        writer.writerow(["City", "City URL", "Data Center Name", "Name", "Address", "Data Center URL", "Latitude", "Longitude"])
+        writer.writerows(geocode_results)
 
-    print("Scraped", len(unique_results), "cities.")
+    print("Scraped", len(geocode_results), "data centers.")
 
     browser.close()
