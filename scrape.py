@@ -61,12 +61,11 @@ with sync_playwright() as pw:
     browser = pw.chromium.launch(headless=True)
     context = browser.new_context()
 
-    # Block images, fonts, scripts
-    context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "font", "script"] else route.continue_())
+    context.route("**/*", lambda route: route.abort() if route.request.resource_type in ["image", "font"] else route.continue_())
+
 
     page = context.new_page()
     page.goto(url)
-
     rows = page.query_selector_all("table.table tbody tr")
     results = []
 
