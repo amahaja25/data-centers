@@ -7,15 +7,140 @@ output: html_notebook
 #load libraries
 
 library(readxl)
+library(sf)
+library(scales)
+library(tidycensus)
+library(stringr)
 ```
 
 ```{r}
 
-# read in data center points
+# read in data center points: TK TK TK 
 
 # read in water use by county
-water_use_county <- read_excel("./data/2023_water_use_country.xlsx")
+water_use_by_county <- read_excel("./data/2023_water_use_county.xlsx", sheet=1) %>% clean_names() %>% 
+  mutate(
+    county = str_replace_all(county, c(
+      "Saint Clair" = "St. Clair",
+      "Saint Joseph" = "St. Joseph"
+    ))
+  )
 
+# which counties use the most water overall?
+water_use_by_county %>% 
+  arrange(desc(total_gallons_all_sources))
+
+# census data for population 
+pop_by_county <- get_estimates(
+  geography = "county",
+  product = "population",
+  state = "MI",
+  vintage = 2024,
+  year = 2024
+) %>%
+  clean_names() %>%
+  filter(variable == "POPESTIMATE") %>%
+  mutate(name = str_remove(name, " County, Michigan")) %>% rename(population = value)
+
+# join to water use data
+water_use_and_population <- water_use_by_county %>% 
+  inner_join(pop_by_county, by=c("county" = "name")) %>% 
+  select(county, total_gallons_all_sources, population)
+
+# calculate per capita water use: gallons used/population for each county.
+water_use_and_population <- water_use_and_population %>% 
+  mutate(
+    per_capita_water_use = total_gallons_all_sources/population
+  )
+
+mi_counties <- read_sf("./data/County.geojson") %>% clean_names()
+
+county_water_use <- mi_counties %>% 
+  left_join(water_use_and_population, by=c("name" = "county"))
+
+ggplot(county_water_use) + 
+   geom_sf(aes(fill = per_capita_water_use)) +
+   scale_fill_gradient(
+    low = "#a9d6e5", 
+    high = "#012a4a",
+    labels = comma  # or labels = label_number()
+  ) +
+  theme_void()
+
+# public water supply
+public_water_supply <- read_excel("./data/2023_water_use_county.xlsx", sheet=7) %>% clean_names() %>% 
+  mutate(
+    county = str_replace_all(county, c(
+      "Saint Clair" = "St. Clair",
+      "Saint Joseph" = "St. Joseph"
+    ))
+  )
+
+# join to population data
+public_water_supply <- public_water_supply %>% 
+  inner_join(pop_by_county, by=c("county" = "name")) %>% 
+  select(county, total_gallons_all_sources, population) %>% 
+  mutate(
+    per_capita_water_supply = total_gallons_all_sources/population
+  )
+  
+county_public_water_supply <- mi_counties %>% 
+  left_join(public_water_supply, by=c("name" = "county"))
+
+ggplot(county_public_water_supply) + 
+   geom_sf(aes(fill = per_capita_water_supply)) +
+   scale_fill_gradient(
+    low = "#a9d6e5", 
+    high = "#012a4a",
+    labels = comma  # or labels = label_number()
+  ) +
+  theme_void()
+```
+
+```{r}
+# read in electricity use by county 
+electricity_use <- read_csv("./data/mi-electricity-use-county.csv") %>% clean_names() %>% 
+   mutate(numeric_generation = parse_number(net_generation_past_year)) %>% 
+  arrange(desc(numeric_generation))
+
+# We need to standardize the metric we use to measure electricity generation. Some counties are measured in MWh (megawatt hours) while others are GWh, and more are Twh. One GWh =  1,000 mWh. 1 TWh = 1,000 GWh.
+
+# Let's stick with GWh. 
+# That means for every county measured in TWh, we multiply by 1000. For every county measured in TWh, we multiply by 
+
+electricity_use %>%
+  mutate(
+    electricity_use_gwh = if_else(
+      str_detect(net_generation_past_year, "TWh"),
+      numeric_generation * 1000,
+      numeric_generation
+    )
+  )
+
+electricity_use <- electricity_use %>%
+  mutate(
+    electricity_use_gwh = case_when(
+      str_detect(net_generation_past_year, "TWh") ~ numeric_generation * 1000,
+      str_detect(net_generation_past_year, "GWh") ~ numeric_generation,
+      str_detect(net_generation_past_year, "MWh") ~ numeric_generation / 1000,
+      TRUE ~ NA_real_  
+    )
+  ) %>% 
+  mutate(county = str_remove(county, " County, MI")) %>% 
+  arrange(desc(electricity_use_gwh)) 
+ 
+
+electricity_use_county_sf <- mi_counties %>% 
+  left_join(electricity_use, by=c("name" = "county"))
+
+ggplot(electricity_use_county_sf) + 
+   geom_sf(aes(fill = electricity_use_gwh)) +
+   scale_fill_gradient(
+    low = "#a9d6e5", 
+    high = "#012a4a",
+    labels = comma  # or labels = label_number()
+  ) +
+  theme_void()
 
 ```
  
