@@ -5,10 +5,10 @@ import random
 import nest_asyncio; nest_asyncio.apply()
 from playwright.sync_api import sync_playwright
 
-url = "https://www.datacentermap.com/usa/ohio/"
+url = "https://www.datacentermap.com/usa/illinois/"
 
-start_index = 6  # Change this to the starting index of the batch
-end_index = 13
+start_index = 111  # Change this to the starting index of the batch
+end_index = 164
 
 with sync_playwright() as pw:
     browser = pw.chromium.launch(headless=False, slow_mo=50)
@@ -27,7 +27,7 @@ with sync_playwright() as pw:
 
     city_page = context.new_page()
 
-    for i, row in enumerate(rows[start_index:end_index]):
+    for row in rows:
         city_elem = row.query_selector("td:nth-child(1) a")
         count_elem = row.query_selector("td:nth-child(2)")
 
@@ -45,7 +45,7 @@ with sync_playwright() as pw:
 
             dcs = parsed_json["props"]["pageProps"]["mapdata"]["dcs"]
 
-            for dc in dcs:
+            for i, dc in enumerate(dcs[start_index:end_index]):
                 props = dc["properties"]
                 geometry = dc["geometry"]
                 lat, lon = geometry["coordinates"][1], geometry["coordinates"][0]
@@ -57,7 +57,7 @@ with sync_playwright() as pw:
                 postal = props.get("postal") or ""
                 dc_url = f"https://www.datacentermap.com{props.get('url')}"
 
-                full_address = f"{address}, {city_dc}, OH, {postal}, USA"
+                full_address = f"{address}, {city_dc}, IL, {postal}, USA"
 
                 results.append([
                     city,
@@ -80,7 +80,7 @@ with sync_playwright() as pw:
             unique_results.append(row)
             seen_urls.add(dc_url)
 
-    with open("oh_data_centers.csv", "a", newline="", encoding="utf-8") as f:
+    with open("il_data_centers.csv", "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if start_index == 0:  
             writer.writerow(["City", "City URL", "Data Center Name", "Name", "Address", "Data Center URL", "Latitude", "Longitude"])
