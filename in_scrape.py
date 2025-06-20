@@ -5,7 +5,7 @@ import random
 import nest_asyncio; nest_asyncio.apply()
 from playwright.sync_api import sync_playwright
 
-url = "https://www.datacentermap.com/usa/wisconsin/"
+url = "https://www.datacentermap.com/usa/indiana/"
 
 
 with sync_playwright() as pw:
@@ -56,7 +56,7 @@ with sync_playwright() as pw:
                 postal = props.get("postal") or ""
                 dc_url = f"https://www.datacentermap.com{props.get('url')}"
 
-                full_address = f"{address}, {city_dc}, WI, {postal}, USA"
+                full_address = f"{address}, {city_dc}, IN, {postal}, USA"
 
 
 
@@ -82,7 +82,7 @@ with sync_playwright() as pw:
             seen_urls.add(dc_url)
 
 
-    with open("wi_data_centers.csv", "w", newline="", encoding="utf-8") as f:
+    with open("in_data_centers.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["City", "City URL", "Data Center Name", "Name", "Address", "Data Center URL", "Latitude", "Longitude"])
         writer.writerows(unique_results)
