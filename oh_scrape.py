@@ -5,8 +5,10 @@ import random
 import nest_asyncio; nest_asyncio.apply()
 from playwright.sync_api import sync_playwright
 
-url = "https://www.datacentermap.com/usa/indiana/"
+url = "https://www.datacentermap.com/usa/ohio/"
 
+start_index = 6  # Change this to the starting index of the batch
+end_index = 13
 
 with sync_playwright() as pw:
     browser = pw.chromium.launch(headless=False, slow_mo=50)
@@ -25,7 +27,7 @@ with sync_playwright() as pw:
 
     city_page = context.new_page()
 
-    for row in rows:
+    for i, row in enumerate(rows[start_index:end_index]):
         city_elem = row.query_selector("td:nth-child(1) a")
         count_elem = row.query_selector("td:nth-child(2)")
 
@@ -36,7 +38,6 @@ with sync_playwright() as pw:
 
             city_page.goto(full_url)
             time.sleep(random.uniform(3, 7))
-
 
             script_tag = city_page.query_selector('script#__NEXT_DATA__')
             json_text = script_tag.inner_text()
@@ -56,9 +57,7 @@ with sync_playwright() as pw:
                 postal = props.get("postal") or ""
                 dc_url = f"https://www.datacentermap.com{props.get('url')}"
 
-                full_address = f"{address}, {city_dc}, IN, {postal}, USA"
-
-
+                full_address = f"{address}, {city_dc}, OH, {postal}, USA"
 
                 results.append([
                     city,
@@ -81,11 +80,11 @@ with sync_playwright() as pw:
             unique_results.append(row)
             seen_urls.add(dc_url)
 
-
-    with open("in_data_centers.csv", "w", newline="", encoding="utf-8") as f:
+    with open("oh_data_centers.csv", "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
-        writer.writerow(["City", "City URL", "Data Center Name", "Name", "Address", "Data Center URL", "Latitude", "Longitude"])
+        if start_index == 0:  
+            writer.writerow(["City", "City URL", "Data Center Name", "Name", "Address", "Data Center URL", "Latitude", "Longitude"])
         writer.writerows(unique_results)
 
-    print("Scraped", len(unique_results), "data centers.")
+    print(f"Scraped {len(unique_results)} data centers from rows {start_index} to {end_index}.")
     browser.close()
