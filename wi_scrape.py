@@ -1,9 +1,11 @@
 import csv
 import json
+import time
+import random
 import nest_asyncio; nest_asyncio.apply()
 from playwright.sync_api import sync_playwright
 
-url = "https://www.datacentermap.com/usa/illinois/"
+url = "https://www.datacentermap.com/usa/wisconsin/"
 
 
 with sync_playwright() as pw:
@@ -16,6 +18,7 @@ with sync_playwright() as pw:
     )
 
     page = context.new_page()
+    time.sleep(random.uniform(2, 5))
     page.goto(url)
     rows = page.query_selector_all("table.table tbody tr")
     results = []
@@ -32,6 +35,8 @@ with sync_playwright() as pw:
             full_url = f"https://www.datacentermap.com{city_link}"
 
             city_page.goto(full_url)
+            time.sleep(random.uniform(3, 7))
+
 
             script_tag = city_page.query_selector('script#__NEXT_DATA__')
             json_text = script_tag.inner_text()
@@ -51,7 +56,7 @@ with sync_playwright() as pw:
                 postal = props.get("postal") or ""
                 dc_url = f"https://www.datacentermap.com{props.get('url')}"
 
-                full_address = f"{address}, {city_dc}, IL, {postal}, USA"
+                full_address = f"{address}, {city_dc}, WI, {postal}, USA"
 
 
 
@@ -77,7 +82,7 @@ with sync_playwright() as pw:
             seen_urls.add(dc_url)
 
 
-    with open("il_data_centers.csv", "w", newline="", encoding="utf-8") as f:
+    with open("wi_data_centers.csv", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["City", "City URL", "Data Center Name", "Name", "Address", "Data Center URL", "Latitude", "Longitude"])
         writer.writerows(unique_results)
