@@ -95,9 +95,7 @@ ggplot(county_public_water_supply) +
     labels = comma  # or labels = label_number()
   ) +
   theme_void()
-```
 
-```{r}
 # read in electricity use by county 
 electricity_use <- read_csv("./data/mi-electricity-use-county.csv") %>% clean_names() %>% 
    mutate(numeric_generation = parse_number(net_generation_past_year)) %>% 
@@ -126,21 +124,8 @@ electricity_use <- electricity_use %>%
       TRUE ~ NA_real_  
     )
   ) %>% 
-  mutate(county = str_remove(county, " County, MI")) %>% 
   arrange(desc(electricity_use_gwh)) 
- 
 
-electricity_use_county_sf <- mi_counties %>% 
-  left_join(electricity_use, by=c("name" = "county"))
-
-ggplot(electricity_use_county_sf) + 
-   geom_sf(aes(fill = electricity_use_gwh)) +
-   scale_fill_gradient(
-    low = "#a9d6e5", 
-    high = "#012a4a",
-    labels = comma  # or labels = label_number()
-  ) +
-  theme_void()
 
 ```
  
